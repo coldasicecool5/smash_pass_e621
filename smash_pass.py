@@ -22,6 +22,8 @@ def get_random_image(tags):
             image_element = soup.find('img', {'id': 'image'})
             if image_element and 'src' in image_element.attrs:
                 return image_element['src']
+            else:
+                print("Image URL not found in response.")
         else:
             print("Error fetching image. Status code:", response.status_code)
     except requests.exceptions.RequestException as e:
@@ -39,7 +41,7 @@ def fetch_image():
             if response.status_code == 200:
                 try:
                     image = Image.open(response.raw)
-                    image = image.resize((700, 700))
+                    image = image.resize((IMAGE_WIDTH, IMAGE_HEIGHT))
                     current_image = ImageTk.PhotoImage(image)
                     image_label.configure(image=current_image)  # Update the image
                     image_label.image = current_image  # Keep a reference to the new image
@@ -72,40 +74,56 @@ def toggle_dark_light_mode():
     else:
         window.tk.call("tk", "theme", "use", "alt")
 
-window = tk.Tk()
+def initialize_gui():
+    window = tk.Tk()
 
-# Dark and light mode toggle
-style = ttk.Style()
-style.theme_use("alt")
-toggle_button = tk.Button(window, text="Toggle Mode", command=toggle_dark_light_mode)
-toggle_button.pack()
+    # Dark and light mode toggle
+    style = ttk.Style()
+    style.theme_use("alt")
+    toggle_button = tk.Button(window, text="Toggle Mode", command=toggle_dark_light_mode)
+    toggle_button.pack()
 
-current_image = ImageTk.PhotoImage(Image.new('RGB', (700, 700)))
+    current_image = ImageTk.PhotoImage(Image.new('RGB', (IMAGE_WIDTH, IMAGE_HEIGHT)))
 
-image_label = tk.Label(window, image=current_image)
-image_label.pack()
+    image_label = tk.Label(window, image=current_image)
+    image_label.pack()
 
-counter_label = tk.Label(window, text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
-counter_label.pack()
+    counter_label = tk.Label(window, text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
+    counter_label.pack()
 
-tag_frame = tk.Frame(window)
-tag_frame.pack()
+    tag_frame = tk.Frame(window)
+    tag_frame.pack()
 
-tags_label = tk.Label(tag_frame, text="Tags:")
-tags_label.pack(side=tk.LEFT)
+    tags_label = tk.Label(tag_frame, text="Tags:")
+    tags_label.pack(side=tk.LEFT)
 
-tags_entry = tk.Entry(tag_frame)
-tags_entry.pack(side=tk.LEFT)
+    tags_entry = tk.Entry(tag_frame)
+    tags_entry.pack(side=tk.LEFT)
 
-button_frame = tk.Frame(window)
-button_frame.pack()
+    button_frame = tk.Frame(window)
+    button_frame.pack()
 
-smash_button = tk.Button(button_frame, text='Smash', command=smash, bg='green', width=20, height=3)
-smash_button.pack(side=tk.LEFT)
+    smash_button = tk.Button(button_frame, text='Smash', command=smash, bg='green', width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+    smash_button.pack(side=tk.LEFT)
 
-pass_button = tk.Button(button_frame, text='Pass', command=pass_, bg='red', width=20, height=3)
-pass_button.pack(side=tk.LEFT)
+    pass_button = tk.Button(button_frame, text='Pass', command=pass_, bg='red', width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+    pass_button.pack(side=tk.LEFT)
 
-fetch_image()  # Fetch the initial image
+    return window, image_label, counter_label, tags_entry
 
-window.mainloop()
+def update_counter_labels():
+    counter_label.config(text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
+
+def start_gui():
+    window, image_label, counter_label, tags_entry = initialize_gui()
+    fetch_image()  # Fetch the initial image
+
+    window.mainloop()
+
+IMAGE_WIDTH = 700
+IMAGE_HEIGHT = 700
+BUTTON_WIDTH = 20
+BUTTON_HEIGHT = 3
+
+if __name__ == "__main__":
+    start_gui()
