@@ -11,6 +11,7 @@ USER_AGENT = "smash_pass/1.0 (by manter)"
 # Counter variables
 smash_counter = 0
 pass_counter = 0
+previous_image_url = ""
 
 def get_random_image(tags):
     try:
@@ -28,9 +29,10 @@ def get_random_image(tags):
     return None
 
 def fetch_image():
+    global previous_image_url
     tags = "oc " + tags_entry.get()  # Combine hardcoded "oc" tag with user-specified tag
     new_image_url = get_random_image(tags)
-    if new_image_url:
+    if new_image_url and new_image_url != previous_image_url:
         try:
             headers = {'User-Agent': USER_AGENT}
             response = requests.get(new_image_url, stream=True, headers=headers)
@@ -41,6 +43,7 @@ def fetch_image():
                     current_image = ImageTk.PhotoImage(image)
                     image_label.configure(image=current_image)  # Update the image
                     image_label.image = current_image  # Keep a reference to the new image
+                    previous_image_url = new_image_url  # Update the previous image URL
                 except Exception as e:
                     print("Error opening image:", e)
             else:
@@ -50,15 +53,17 @@ def fetch_image():
 
 def smash():
     global smash_counter
-    smash_counter += 1
-    counter_label.config(text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
     threading.Thread(target=fetch_image).start()
+    if previous_image_url:
+        smash_counter += 1
+        counter_label.config(text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
 
 def pass_():
     global pass_counter
-    pass_counter += 1
-    counter_label.config(text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
     threading.Thread(target=fetch_image).start()
+    if previous_image_url:
+        pass_counter += 1
+        counter_label.config(text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
 
 def toggle_dark_light_mode():
     current_theme = window.tk.call("tk", "theme", "use")
