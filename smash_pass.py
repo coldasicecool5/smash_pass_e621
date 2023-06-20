@@ -13,13 +13,12 @@ pass_counter = 0
 previous_image_url = ""
 image_label = None  # Declare image_label as a global variable
 counter_label = None  # Declare counter_label as a global variable
-lock = threading.Lock()  # Add a lock object
-session = requests.Session()
-session.headers.update({'User-Agent': USER_AGENT})
+window = None  # Declare window as a global variable
+tags_entry = None  # Declare tags_entry as a global variable
 
 def get_random_image(tags):
     try:
-        response = session.get(f'https://e621.net/posts/random?tags={tags}')
+        response = requests.get(f'https://e621.net/posts/random?tags={tags}')
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
             image_element = soup.find('img', {'id': 'image'})
@@ -33,13 +32,13 @@ def get_random_image(tags):
         print("Error making image request:", e)
     return None
 
-def fetch_image(tags_entry):
+def fetch_image():
     global previous_image_url, image_label
     tags = "oc " + tags_entry.get()
     new_image_url = get_random_image(tags)
     if new_image_url and new_image_url != previous_image_url:
         try:
-            response = session.get(new_image_url, stream=True)
+            response = requests.get(new_image_url, stream=True)
             if response.status_code == 200:
                 try:
                     image = Image.open(response.raw)
@@ -59,36 +58,30 @@ def resize_image(image):
     image_label.configure(image=current_image)
     image_label.image = current_image
 
-def smash(tags_entry):
+def smash():
     global smash_counter, counter_label
-    with lock:
-        threading.Thread(target=fetch_image, args=(tags_entry,)).start()
-        if previous_image_url:
-            smash_counter += 1
-            counter_label.config(text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
+    threading.Thread(target=fetch_image).start()
+    if previous_image_url:
+        smash_counter += 1
+        counter_label.config(text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
 
-def pass_(tags_entry):
+def pass_():
     global pass_counter, counter_label
-    with lock:
-        threading.Thread(target=fetch_image, args=(tags_entry,)).start()
-        if previous_image_url:
-            pass_counter += 1
-            counter_label.config(text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
-
-def toggle_dark_light_mode():
-    current_theme = window.tk.call("tk", "theme", "use")
-    if current_theme == "alt":
-        window.tk.call("tk", "theme", "use", "default")
-    else:
-        window.tk.call("tk", "theme", "use", "alt")
+    threading.Thread(target=fetch_image).start()
+    if previous_image_url:
+        pass_counter += 1
+        counter_label.config(text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
 
 def initialize_gui():
-    global image_label, counter_label
+    global window, image_label, counter_label, tags_entry
     window = tk.Tk()
+
+    window.configure(bg="black")  # Set window background color to black
 
     style = ttk.Style()
     style.theme_use("alt")
-    toggle_button = tk.Button(window, text="Toggle Mode", command=toggle_dark_light_mode)
+
+    toggle_button = tk.Button(window, text="Toggle Mode", command=lambda: toggle_dark_light_mode(window))
     toggle_button.pack()
 
     current_image = ImageTk.PhotoImage(Image.new('RGB', (IMAGE_WIDTH, IMAGE_HEIGHT)))
@@ -110,22 +103,26 @@ def initialize_gui():
     button_frame = tk.Frame(window)
     button_frame.pack()
 
-    smash_button = tk.Button(button_frame, text='Smash', command=lambda: smash(tags_entry), bg='green', width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+    smash_button = tk.Button(button_frame, text='Smash', command=smash, bg='green',
+                             width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
     smash_button.pack(side=tk.LEFT)
 
-    pass_button = tk.Button(button_frame, text='Pass', command=lambda: pass_(tags_entry), bg='red', width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+    pass_button = tk.Button(button_frame, text='Pass', command=pass_, bg='red',
+                            width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
     pass_button.pack(side=tk.LEFT)
 
-    return window, counter_label, tags_entry  # Return tags_entry
-
-def update_counter_labels():
-    counter_label.config(text=f"Smashes: {smash_counter}  Passes: {pass_counter}")
+    return window
 
 def start_gui():
-    window, counter_label, tags_entry = initialize_gui()  # Receive tags_entry
-    fetch_image(tags_entry)  # Pass the tags_entry argument
+    global window
+    window = initialize_gui()
+    fetch_image()  # Fetch the initial image
 
     window.mainloop()
+
+def toggle_dark_light_mode(window):
+    # Not needed for changing window color to black
+    pass
 
 IMAGE_WIDTH = 700
 IMAGE_HEIGHT = 700
